@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Disk Scheduling Simulator</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{
+    background:#0b132b;
+    font-family:Arial;
+    color:white;
+    text-align:center;
+}
+
+.container{
+    background:#1c2541;
+    padding:20px;
+    width:320px;
+    margin:20px auto;
+    border-radius:12px;
+}
+
+input,button{
+    width:90%;
+    padding:10px;
+    margin:6px;
+    border-radius:6px;
+    border:none;
+}
+
+button{
+    background:#00c896;
+    color:white;
+    cursor:pointer;
+}
+
+.card{
+    background:#1c2541;
+    margin:25px auto;
+    padding:20px;
+    border-radius:12px;
+    width:85%;
+    max-width:700px;
+}
+
+canvas{
+    background:white;
+    border-radius:10px;
+    width:100% !important;
+    max-width:600px;
+    height:280px !important;
+    margin:20px auto;
+    display:block;
+}
+</style>
+</head>
+
+<body>
+
+<h2>Disk Scheduling Simulator</h2>
+
+<div class="container">
+    <input id="req" placeholder="Requests (12 34 25 68 39)">
+    <input id="head" placeholder="Head Position">
+    <input id="size" placeholder="Disk Size">
+    <button onclick="run()">Run Simulation</button>
+</div>
+
+<div id="output"></div>
+
+<script>
+
+// Seek Time
+function calcSeek(seq){
+    let seek=0;
+    for(let i=0;i<seq.length-1;i++){
+        seek+=Math.abs(seq[i]-seq[i+1]);
+    }
+    return seek;
+}
+
+// Algorithms
+function fcfs(req, head){
+    return [head,...req];
+}
+
+function sstf(req, head){
+    let arr=[...req], seq=[head];
+    while(arr.length){
+        let closest=arr.reduce((a,b)=>
+            Math.abs(b-head)<Math.abs(a-head)?b:a
+        );
+        seq.push(closest);
+        head=closest;
+        arr.splice(arr.indexOf(closest),1);
+    }
+    return seq;
+}
+
+function scan(req, head, size){
+    let left=req.filter(x=>x<head).sort((a,b)=>b-a);
+    let right=req.filter(x=>x>=head).sort((a,b)=>a-b);
+    return [head,...right,size-1,...left];
+}
+
+function cscan(req, head, size){
+    let left=req.filter(x=>x<head).sort((a,b)=>a-b);
+    let right=req.filter(x=>x>=head).sort((a,b)=>a-b);
+    return [head,...right,size-1,0,...left];
+}
+
+function look(req, head){
+    let left=req.filter(x=>x<head).sort((a,b)=>b-a);
+    let right=req.filter(x=>x>=head).sort((a,b)=>a-b);
+    return [head,...right,...left];
+}
+
+function clook(req, head){
+    let left=req.filter(x=>x<head).sort((a,b)=>a-b);
+    let right=req.filter(x=>x>=head).sort((a,b)=>a-b);
+    return [head,...right,...left];
+}
+
+// Draw Chart
+function draw(name, seq){
+    let id="chart_"+name;
+
+    let points = seq.map((val, index)=>({
+        x:index,
+        y:val
+    }));
+
+    document.getElementById("output").innerHTML+=`
+    <div class="card">
+        <h3>${name}</h3>
+        <p><b>Sequence:</b> ${seq.join(" → ")}</p>
+        <p><b>Seek Time:</b> ${calcSeek(seq)}</p>
+        <canvas id="${id}"></canvas>
+    </div>
+    `;
+
+    setTimeout(()=>{
+        new Chart(document.getElementById(id),{
+            type:'line',
+            data:{
+                datasets:[{
+                    label:name,
+                    data:points,
+                    borderColor:"lime",
+                    pointRadius:4,
+                    fill:false,
+                    tension:0
+                }]
+            },
+            options:{
+                responsive:true,
+                maintainAspectRatio:false,
+                plugins:{
+                    legend:{ display:false }
+                },
+                scales:{
+                    x:{
+                        type:'linear',
+                        title:{
+                            display:true,
+                            text:"Step"
+                        }
+                    },
+                    y:{
+                        title:{
+                            display:true,
+                            text:"Disk Position"
+                        }
+                    }
+                }
+            }
+        });
+    },100);
+}
+
+// Run
+function run(){
+    document.getElementById("output").innerHTML="";
+
+    let req=document.getElementById("req").value.split(" ").map(Number);
+    let head=parseInt(document.getElementById("head").value);
+    let size=parseInt(document.getElementById("size").value);
+
+    draw("FCFS", fcfs(req,head));
+    draw("SSTF", sstf(req,head));
+    draw("SCAN", scan(req,head,size));
+    draw("C-SCAN", cscan(req,head,size));
+    draw("LOOK", look(req,head));
+    draw("C-LOOK", clook(req,head));
+}
+
+</script>
+
+</body>
+</html>
