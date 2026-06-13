@@ -63,6 +63,7 @@ canvas{
     <input id="req" placeholder="Requests (12 34 25 68 39)">
     <input id="head" placeholder="Head Position">
     <input id="size" placeholder="Disk Size">
+    <input id="prev" placeholder="Previous Head Position">
     <button onclick="run()">Run Simulation</button>
 </div>
 
@@ -79,11 +80,12 @@ function calcSeek(seq){
     return seek;
 }
 
-// Algorithms
+// FCFS
 function fcfs(req, head){
     return [head,...req];
 }
 
+// SSTF
 function sstf(req, head){
     let arr=[...req], seq=[head];
     while(arr.length){
@@ -97,38 +99,89 @@ function sstf(req, head){
     return seq;
 }
 
-function scan(req, head, size){
+// SCAN (with previous)
+function scan(req, head, size, prev){
     let left=req.filter(x=>x<head).sort((a,b)=>b-a);
     let right=req.filter(x=>x>=head).sort((a,b)=>a-b);
-    return [head,...right,size-1,...left];
+
+    let seq=[head];
+
+    if(prev < head){
+        seq=seq.concat(right);
+        seq.push(size-1);
+        seq=seq.concat(left);
+    } else {
+        seq=seq.concat(left);
+        seq.push(0);
+        seq=seq.concat(right);
+    }
+
+    return seq;
 }
 
-function cscan(req, head, size){
+// C-SCAN
+function cscan(req, head, size, prev){
     let left=req.filter(x=>x<head).sort((a,b)=>a-b);
     let right=req.filter(x=>x>=head).sort((a,b)=>a-b);
-    return [head,...right,size-1,0,...left];
+
+    let seq=[head];
+
+    if(prev < head){
+        seq=seq.concat(right);
+        seq.push(size-1);
+        seq.push(0);
+        seq=seq.concat(left);
+    } else {
+        seq=seq.concat(left.reverse());
+        seq.push(0);
+        seq.push(size-1);
+        seq=seq.concat(right.reverse());
+    }
+
+    return seq;
 }
 
-function look(req, head){
+// LOOK
+function look(req, head, prev){
     let left=req.filter(x=>x<head).sort((a,b)=>b-a);
     let right=req.filter(x=>x>=head).sort((a,b)=>a-b);
-    return [head,...right,...left];
+
+    let seq=[head];
+
+    if(prev < head){
+        seq=seq.concat(right);
+        seq=seq.concat(left);
+    } else {
+        seq=seq.concat(left);
+        seq=seq.concat(right);
+    }
+
+    return seq;
 }
 
-function clook(req, head){
+// C-LOOK
+function clook(req, head, prev){
     let left=req.filter(x=>x<head).sort((a,b)=>a-b);
     let right=req.filter(x=>x>=head).sort((a,b)=>a-b);
-    return [head,...right,...left];
+
+    let seq=[head];
+
+    if(prev < head){
+        seq=seq.concat(right);
+        seq=seq.concat(left);
+    } else {
+        seq=seq.concat(left.reverse());
+        seq=seq.concat(right.reverse());
+    }
+
+    return seq;
 }
 
 // Draw Chart
 function draw(name, seq){
     let id="chart_"+name;
 
-    let points = seq.map((val, index)=>({
-        x:index,
-        y:val
-    }));
+    let points=seq.map((val,i)=>({x:i,y:val}));
 
     document.getElementById("output").innerHTML+=`
     <div class="card">
@@ -144,9 +197,9 @@ function draw(name, seq){
             type:'line',
             data:{
                 datasets:[{
-                    label:name,
                     data:points,
-                    borderColor:"lime",
+                    borderColor:"#007bff",
+                    borderDash:[6,6],
                     pointRadius:4,
                     fill:false,
                     tension:0
@@ -155,23 +208,10 @@ function draw(name, seq){
             options:{
                 responsive:true,
                 maintainAspectRatio:false,
-                plugins:{
-                    legend:{ display:false }
-                },
+                plugins:{ legend:{display:false}},
                 scales:{
-                    x:{
-                        type:'linear',
-                        title:{
-                            display:true,
-                            text:"Step"
-                        }
-                    },
-                    y:{
-                        title:{
-                            display:true,
-                            text:"Disk Position"
-                        }
-                    }
+                    x:{ type:'linear', title:{display:true,text:"Step"}},
+                    y:{ title:{display:true,text:"Disk Position"}}
                 }
             }
         });
@@ -185,13 +225,14 @@ function run(){
     let req=document.getElementById("req").value.split(" ").map(Number);
     let head=parseInt(document.getElementById("head").value);
     let size=parseInt(document.getElementById("size").value);
+    let prev=parseInt(document.getElementById("prev").value);
 
     draw("FCFS", fcfs(req,head));
     draw("SSTF", sstf(req,head));
-    draw("SCAN", scan(req,head,size));
-    draw("C-SCAN", cscan(req,head,size));
-    draw("LOOK", look(req,head));
-    draw("C-LOOK", clook(req,head));
+    draw("SCAN", scan(req,head,size,prev));
+    draw("C-SCAN", cscan(req,head,size,prev));
+    draw("LOOK", look(req,head,prev));
+    draw("C-LOOK", clook(req,head,prev));
 }
 
 </script>
